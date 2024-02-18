@@ -1,0 +1,45 @@
+[user]
+	email = emersonmde@protonmail.com
+	name = Matthew Emerson
+
+[alias]
+	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+
+[merge]
+	conflictstyle = zdiff3
+
+[pull]
+	rebase = true
+
+[init]
+	defaultBranch = main
+
+[rerere]
+	enabled = true
+
+[diff]
+	algorithm = histogram
+
+[url "git@github.com:"]
+	insteadOf = "https://github.com/"
+
+[transfer]
+	fsckobjects = true
+
+[fetch]
+	fsckobjects = true
+
+[receive]
+	fsckObjects = true
+
+[branch]
+	sort = -committerdate
+
+[tag]
+	sort = taggerdate
+
+[log]
+	date = iso
+
+[include]
+	path = "~/.work-gitconfig"
