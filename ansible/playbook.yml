@@ -86,6 +86,7 @@
   - name: Check if Rust is installed
     shell: 'command -v cargo'
     register: cargo_installed
+    failed_when: false
     ignore_errors: yes
     changed_when: false
 
@@ -95,6 +96,14 @@
       executable: /bin/bash
     become: no
     when: cargo_installed.rc != 0
+
+  - name: Get list of installed Rust components
+    command: rustup component list --installed
+    register: installed_components
+    changed_when: false
+    become: no
+    environment:
+      PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
 
   - name: Install additional Rust components
     shell: rustup component add {{ item }}
@@ -109,9 +118,4 @@
       - rust-analysis
       - rust-src
       - rustfmt
-
-  - name: Install Neovim plugins
-    command: nvim --headless "+Lazy! sync" +qa
-    become: no
-    environment:
-      HOME: "{{ ansible_env.HOME }}"
+    when: item not in installed_components.stdout
