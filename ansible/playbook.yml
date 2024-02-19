@@ -4,7 +4,7 @@
   vars:
     common_packages:
       - awscli
-      - cloc
+      - sloc
       - htop
       - hyperfine
       - jq
@@ -96,5 +96,22 @@
     become: no
     when: cargo_installed.rc != 0
 
-  
+  - name: Install additional Rust components
+    shell: rustup component add {{ item }}
+    args:
+      executable: /bin/bash
+    become: no
+    environment:
+      PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+    loop:
+      - clippy
+      - rls
+      - rust-analysis
+      - rust-src
+      - rustfmt
 
+  - name: Install Neovim plugins
+    command: nvim --headless "+Lazy! sync" +qa
+    become: no
+    environment:
+      HOME: "{{ ansible_env.HOME }}"
