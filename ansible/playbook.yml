@@ -1,0 +1,100 @@
+---
+- name: Setup system and symlink dotfiles
+  hosts: localhost
+  vars:
+    common_packages:
+      - awscli
+      - cloc
+      - htop
+      - hyperfine
+      - jq
+      - neovim
+      - nmap
+      - stow
+      - tree
+      - ripgrep
+
+  tasks:
+  - name: Display ansible_os_family
+    debug:
+      msg: "The OS family is {{ ansible_os_family }}"
+
+  - name: Install common packages (non-MacOS)
+    package:
+      name: "{{ item }}"
+      state: present
+    loop: "{{ common_packages }}"
+    when: ansible_os_family != 'Darwin'
+    become: yes
+
+  - name: Install common packages (MacOS)
+    package:
+      name: "{{ item }}"
+      state: present
+    loop: "{{ common_packages }}"
+    when: ansible_os_family == 'Darwin'
+    become: no
+
+  - name: Ensure .dotfiles directory exists
+    file:
+      path: ~/.dotfiles
+      state: directory
+
+  - name: Check if dotfiles are stowed correctly
+    shell: |
+      STOWED_FILES=$(stow --simulate --verbose . 2>&1)
+      if echo "$STOWED_FILES" | grep -q 'LINK:'; then
+        echo "changes_required"
+      else
+        echo "correctly_stowed"
+      fi
+    args:
+      chdir: ~/.dotfiles
+      executable: /bin/bash
+    register: stow_check
+    changed_when: false
+    ignore_errors: true
+
+  - name: Stow dotfiles
+    command: stow --no-folding .
+    args:
+      chdir: ~/.dotfiles
+    when: '"changes_required" in stow_check.stdout'
+
+  - name: Check if NVM is installed
+    stat:
+      path: "{{ ansible_env.HOME }}/.nvm"
+    register: nvm_dir
+    changed_when: false
+
+  - name: Install NVM
+    shell: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+    args:
+      executable: /bin/bash
+    become: no
+    when: not nvm_dir.stat.exists
+
+  - name: Install latest LTS version of Node
+    shell: . {{ ansible_env.HOME }}/.nvm/nvm.sh && nvm install --lts
+    args:
+      executable: /bin/bash
+    become: no
+    environment:
+      HOME: "{{ ansible_env.HOME }}"
+    when: not nvm_dir.stat.exists
+
+  - name: Check if Rust is installed
+    shell: 'command -v cargo'
+    register: cargo_installed
+    ignore_errors: yes
+    changed_when: false
+
+  - name: Install Rust and Cargo
+    shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    args:
+      executable: /bin/bash
+    become: no
+    when: cargo_installed.rc != 0
+
+  
+

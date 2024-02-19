@@ -1,18 +1,19 @@
 # .dotfiles
 
-Install GNU Stow
 
+## Usage
+
+Clone the Repository:
 ```sh
-brew install stow
+git clone git@github.com:emersonmde/.dotfiles.git ~/.dotfiles && cd ~/.dotfiles
 ```
 
-Clone dotfiles
+Execute the bootstrap script to install Ansible (and Homebrew on MacOS):
 ```sh
-git clone git@github.com:emersonmde/.dotfiles.git && cd .dotfiles
+./ansible/bootstrap_ansible.sh
 ```
 
-Create symlinks
+Run the Ansible playbook
 ```sh
-stow --no-folding .
+ansible-playbook ansible/playbook.yml
 ```
-
