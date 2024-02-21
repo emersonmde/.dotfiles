@@ -4,7 +4,6 @@
   vars:
     common_packages:
       - awscli
-      - sloc
       - htop
       - hyperfine
       - jq

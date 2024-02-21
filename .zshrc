@@ -26,12 +26,23 @@ git_prompt_info() {
   fi
 }
 
-PROMPT='[%B${NCOLOR}%n%b%{$reset_color%}:%F{red}%30<...<%~%<<%f]%(!.#.$) '
+#PROMPT='[%B${NCOLOR}%n%b%{$reset_color%}:%F{red}%30<...<%~%<<%f]%(!.#.$) '
+PROMPT='[%B${NCOLOR}%n%b%{$reset_color%}:%F{blue}%m:%F{red}%30<...<%~%<<%f]%(!.#.$) '
 RPROMPT='$(git_prompt_info)'
+os_type="$(uname -s)"
 
-# Color scheme from oh-my-zsh's mh theme
-export LSCOLORS="Gxfxcxdxbxegedabagacad"
-export LS_COLORS='no=00:fi=00:di=01;34:ln=00;36:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=41;33;01:ex=00;32:*.cmd=00;32:*.exe=01;32:*.com=01;32:*.bat=01;32:*.btm=01;32:*.dll=01;32:*.tar=00;31:*.tbz=00;31:*.tgz=00;31:*.rpm=00;31:*.deb=00;31:*.arj=00;31:*.taz=00;31:*.lzh=00;31:*.lzma=00;31:*.zip=00;31:*.zoo=00;31:*.z=00;31:*.Z=00;31:*.gz=00;31:*.bz2=00;31:*.tb2=00;31:*.tz2=00;31:*.tbz2=00;31:*.avi=01;35:*.bmp=01;35:*.fli=01;35:*.gif=01;35:*.jpg=01;35:*.jpeg=01;35:*.mng=01;35:*.mov=01;35:*.mpg=01;35:*.pcx=01;35:*.pbm=01;35:*.pgm=01;35:*.png=01;35:*.ppm=01;35:*.tga=01;35:*.tif=01;35:*.xbm=01;35:*.xpm=01;35:*.dl=01;35:*.gl=01;35:*.wmv=01;35:*.aiff=00;32:*.au=00;32:*.mid=00;32:*.mp3=00;32:*.ogg=00:32:*.voc=00;32:*.wav=00;32:'
+# Color scheme from oh-my-zsh's mh theme (Mac)
+if [[ "$os_type" == "Darwin" ]]; then
+  export LSCOLORS="Gxfxcxdxbxegedabagacad"
+  alias ls="ls -G"
+fi
+
+# Color scheme from oh-my-zsh's mh theme (Linux)
+if [[ "$os_type" == "Linux" ]]; then
+  # Set LS_COLORS for GNU `ls`
+  export LS_COLORS='di=01;34:ln=01;36:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:ex=01;32:*.cmd=01;32:*.exe=01;32:*.bat=01;32:*.dll=01;32:*.tar=01;31:*.tgz=01;31:*.bz2=01;31:*.bz=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.rar=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.jpg=01;35:*.jpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'
+  alias ls="ls --color=auto"
+fi
 
 # Aliases
 alias vi="nvim"
@@ -62,7 +73,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # Java
-export JAVA_HOME=`/usr/libexec/java_home -v 21`
+if [ -x /usr/libexec/java_home ]; then
+    export JAVA_HOME=`/usr/libexec/java_home -v 21`
+fi
 
 # SdkMan for Gradle/Java
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
