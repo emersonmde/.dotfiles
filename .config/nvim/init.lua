@@ -20,6 +20,29 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+local function getBarium()
+  if os.getenv("WORK_CONFIG") ~= 'true' then
+    return {}
+  end
+
+  return {
+    url = vim.fn.expand('$USER@git.amazon.com:pkg/NinjaHooks'),
+    branch = "mainline",
+    lazy = false,
+    config = function(plugin)
+      vim.opt.rtp:prepend(plugin.dir .. "/configuration/vim/amazon/brazil-config")
+      vim.filetype.add({
+        filename = {
+          ['Config'] = function()
+            vim.b.brazil_package_Config = 1
+            return 'brazil-config'
+          end,
+        },
+      })
+    end,
+  }
+end
+
 -- [[ Configure plugins ]]
 -- NOTE: Here is where you install your plugins.
 --  You can configure plugins using the `config` key.
@@ -36,10 +59,13 @@ require('lazy').setup({
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
 
+  -- Include Brazil LSP if WORK_CONFIG == true
+  getBarium(),
+
   -- Copilot
   {
     "zbirenbaum/copilot.lua",
-    enabled = true,
+    enabled = os.getenv('WORK_CONFIG') ~= true,
     cmd = "Copilot",
     build = ":Copilot auth",
     event = "InsertEnter",
@@ -70,7 +96,7 @@ require('lazy').setup({
       end
     end,
   },
-
+  --
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
   {
@@ -302,7 +328,6 @@ vim.o.mouse = 'a'
 -- Enable break indent
 vim.o.breakindent = true
 
-
 -- Set tabs
 vim.opt.tabstop = 4
 vim.opt.softtabstop = 4
@@ -514,6 +539,30 @@ vim.defer_fn(function()
   }
 end, 0)
 
+
+-- Ads multiple workspace folders configured by Bemol
+function bemol()
+  if os.getenv('WORK_CONFIG') ~= 'true' then
+    return
+  end
+
+  local bemol_dir = vim.fs.find({ '.bemol' }, { upward = true, type = 'directory'})[1]
+  local ws_folders_lsp = {}
+  if bemol_dir then
+    local file = io.open(bemol_dir .. '/ws_root_folders', 'r')
+    if file then
+      for line in file:lines() do
+        table.insert(ws_folders_lsp, line)
+      end
+      file:close()
+    end
+  end
+
+  for _, line in ipairs(ws_folders_lsp) do
+    vim.lsp.buf.add_workspace_folder(line)
+  end
+end
+
 -- [[ Configure LSP ]]
 --  This function gets run when an LSP connects to a particular buffer.
 local on_attach = function(_, bufnr)
@@ -559,6 +608,8 @@ local on_attach = function(_, bufnr)
   vim.api.nvim_buf_create_user_command(bufnr, 'Format', function(_)
     vim.lsp.buf.format()
   end, { desc = 'Format current buffer with LSP' })
+
+  bemol()
 end
 
 -- document existing key chains
@@ -593,13 +644,28 @@ require('mason-lspconfig').setup()
 --  If you want to override the default filetypes that your language server will attach to you can
 --  define the property 'filetypes' to the map in question.
 local servers = {
-  -- clangd = {},
   gopls = {},
   pyright = {},
   rust_analyzer = {},
   tsserver = {},
   html = { filetypes = { 'html', 'twig', 'hbs'} },
   htmx = {},
+  jdtls = {
+    java = {
+      jdt = {
+        ls = {
+          lombokSupport = {
+            enabled = true,
+          },
+          -- TODO: check lombok.jar exists before passing it to vmargs
+          vmargs = '-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1G -Xms100m -Xlog:disable -javaagent:~/.local/share/jdtls/lombok.jar'
+        },
+      },
+      eclipse = {
+        downloadSources = true,
+      },
+    },
+  },
 
   lua_ls = {
     Lua = {

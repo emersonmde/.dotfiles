@@ -18,8 +18,8 @@
 [diff]
 	algorithm = histogram
 
-[url "git@github.com:"]
-	insteadOf = "https://github.com/"
+#[url "git@github.com:"]
+#	insteadOf = "https://github.com/"
 
 [transfer]
 	fsckobjects = true
@@ -40,7 +40,7 @@
 	date = iso
 
 [include]
-	path = "~/.work-gitconfig"
+	path = "~/.gitconfig-work"
 
 [filter "lfs"]
 	smudge = git-lfs smudge -- %f

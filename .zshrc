@@ -50,8 +50,9 @@ alias cdws="cd ~/workspace"
 alias ls="ls --color=auto"
 alias lsa="ls -lah"
 
-# ESP32
-alias get_idf='. $HOME/esp/esp-idf/export.sh'
+# ZSH completion
+fpath=(~/.zsh/completion $fpath)
+autoload -Uz compinit && compinit -i
 
 # Python
 export PYENV_ROOT="$HOME/.pyenv"
@@ -69,8 +70,8 @@ export OPENSSL_STATIC=1
 
 # Node
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # Java
 if [ -x /usr/libexec/java_home ]; then
@@ -78,10 +79,10 @@ if [ -x /usr/libexec/java_home ]; then
 fi
 
 # SdkMan for Gradle/Java
-#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
 
+# iTerm2 Shell Integrations
 test -e "${HOME}/.iterm2_shell_integration.zsh" && source "${HOME}/.iterm2_shell_integration.zsh"
 
 HISTFILE=~/.zsh_history
@@ -89,4 +90,11 @@ HISTSIZE=100000
 SAVEHIST=100000
 setopt SHARE_HISTORY
 
+# Other program defaults
 export SYSTEMD_EDITOR=nvim
+export BROWSER=firefox
+
+if [ -f ~/.zshrc-work ]; then
+  source ~/.zshrc-work
+fi
+
