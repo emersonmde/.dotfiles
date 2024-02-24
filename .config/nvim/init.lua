@@ -113,7 +113,7 @@ require('lazy').setup({
 
       -- Useful status updates for LSP
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
-      { 'j-hui/fidget.nvim', opts = {} },
+      { 'j-hui/fidget.nvim',       opts = {} },
 
       -- Additional lua configuration, makes nvim stuff amazing!
       'folke/neodev.nvim',
@@ -149,7 +149,7 @@ require('lazy').setup({
   },
 
   -- Useful plugin to show you pending keybinds.
-  { 'folke/which-key.nvim', opts = {} },
+  { 'folke/which-key.nvim',  opts = {} },
   {
     -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
@@ -296,8 +296,8 @@ require('lazy').setup({
     build = ':TSUpdate',
   },
 
-	-- JDT LS for Java
-	"mfussenegger/nvim-jdtls",
+  -- JDT LS for Java
+  "mfussenegger/nvim-jdtls",
 
   -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
   --       These are some example plugins that I've included in the kickstart repository.
@@ -549,7 +549,7 @@ end, 0)
 
 -- Ads multiple workspace folders configured by Bemol
 local function bemol()
-  local bemol_dir = vim.fs.find({ '.bemol' }, { upward = true, type = 'directory'})[1]
+  local bemol_dir = vim.fs.find({ '.bemol' }, { upward = true, type = 'directory' })[1]
   local ws_folders_lsp = {}
   if bemol_dir then
     local file = io.open(bemol_dir .. '/ws_root_folders', 'r')
@@ -613,9 +613,8 @@ local on_attach = function(_, bufnr)
   end, { desc = 'Format current buffer with LSP' })
 
   if os.getenv('WORK_CONFIG') == 'true' then
-		bemol()
+    bemol()
   end
-
 end
 
 -- document existing key chains
@@ -654,7 +653,7 @@ local servers = {
   pyright = {},
   rust_analyzer = {},
   tsserver = {},
-  html = { filetypes = { 'html', 'twig', 'hbs'} },
+  html = { filetypes = { 'html', 'twig', 'hbs' } },
   htmx = {},
 
   lua_ls = {
@@ -750,7 +749,7 @@ cmp.setup {
 require("copilot").setup {
   filetypes = {
     markdown = true, -- overrides default
-    sh = function ()
+    sh = function()
       if string.match(vim.fs.basename(vim.api.nvim_buf_get_name(0)), '^%.env.*') then
         -- disable for .env files
         return false
@@ -764,22 +763,22 @@ require('fidget').setup({})
 
 -- [[ Configure LSP for Java ]]
 local function file_exists_with_pattern(path)
-    local command = "ls " .. path .. " 2>/dev/null"
-    local handle = io.popen(command)
-    local result = handle:read("*a")
-    handle:close()
-    return result ~= ""
+  local command = "ls " .. path .. " 2>/dev/null"
+  local handle = io.popen(command)
+  local result = handle:read("*a")
+  handle:close()
+  return result ~= ""
 end
 
 local function download_and_verify_in_background(download_url, checksum_url, target_dir, target_file, callback)
-    local target_path = target_dir .. "/" .. target_file
-    local checksum_path = target_path .. ".sha256"
-    vim.fn.mkdir(target_dir, "p")
+  local target_path = target_dir .. "/" .. target_file
+  local checksum_path = target_path .. ".sha256"
+  vim.fn.mkdir(target_dir, "p")
 
-    -- Download both the file and checksum, then verify the checksum
-    local command = string.format(
-        [[
-        { 
+  -- Download both the file and checksum, then verify the checksum
+  local command = string.format(
+    [[
+        {
           curl -L -o '%s' '%s' &&
           curl -L -o '%s' '%s' &&
           CHECKSUM=$(shasum -a 256 '%s' | awk '{print $1}') &&
@@ -792,33 +791,34 @@ local function download_and_verify_in_background(download_url, checksum_url, tar
           fi
         } &> /tmp/jdtls_setup.log
         ]],
-        target_path, download_url,
-        checksum_path, checksum_url,
-        target_path, checksum_path,
-        target_path, target_dir
-    )
+    target_path, download_url,
+    checksum_path, checksum_url,
+    target_path, checksum_path,
+    target_path, target_dir
+  )
 
-    local function on_exit(code, _)
-        vim.schedule(function()
-            local log = vim.fn.readfile("/tmp/jdtls_setup.log")
-            local success = vim.tbl_contains(log, "success")
-            vim.loop.fs_unlink("/tmp/jdtls_setup.log")
+  local function on_exit(code, _)
+    vim.schedule(function()
+      local log = vim.fn.readfile("/tmp/jdtls_setup.log")
+      local success = vim.tbl_contains(log, "success")
+      vim.loop.fs_unlink("/tmp/jdtls_setup.log")
+      vim.loop.fs_unlink(checksum_path)
 
-            if code == 0 and success then
-                require('fidget').notify("JDTLS downloaded", nil, {group = "JDTLS Setup"})
-                callback(true, target_path)
-            else
-                require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, {group = "JDTLS Setup"})
-                callback(false, target_path)
-                vim.loop.fs_unlink(target_path)
-            end
-        end)
-    end
+      if code == 0 and success then
+        require('fidget').notify("JDTLS downloaded", nil, { group = "JDTLS Setup" })
+        callback(true, target_path)
+      else
+        require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, { group = "JDTLS Setup" })
+        callback(false, target_path)
+        vim.loop.fs_unlink(target_path)
+      end
+    end)
+  end
 
-    vim.loop.spawn("bash", {
-        args = {"-c", command},
-        stdio = {nil, nil, nil}
-    }, on_exit)
+  vim.loop.spawn("bash", {
+    args = { "-c", command },
+    stdio = { nil, nil, nil }
+  }, on_exit)
 end
 
 
@@ -841,7 +841,8 @@ local function configure_jdtls(jdtls_dir)
   -- Find the launcher jar in the plugins directory
   local launcher_jar_path = vim.fn.glob(jdtls_dir .. "/plugins/org.eclipse.equinox.launcher_*.jar")
 
-  local workspace_folder = vim.fn.expand("~/.local/share/nvim/workspace") .. vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
+  local workspace_folder = vim.fn.expand("~/.local/share/nvim/workspace") ..
+  vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
   local config = {
     cmd = {
       "java",
@@ -857,11 +858,11 @@ local function configure_jdtls(jdtls_dir)
     },
     on_attach = on_attach,
     capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities()),
-    root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'}),
+    root_dir = require('jdtls.setup').find_root({ '.git', 'mvnw', 'gradlew' }),
 
-		-- Here you can configure eclipse.jdt.ls specific settings
-		-- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
-		-- for a list of options
+    -- Here you can configure eclipse.jdt.ls specific settings
+    -- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
+    -- for a list of options
     settings = {
       java = {
         jdt = {
@@ -891,8 +892,10 @@ end
 local function setup_jdtls()
   local jdtls_dir = vim.fn.expand("~/.local/share/nvim/jdtls")
   local jdtls_tar = "jdtls.tar.gz"
-  local download_url = "https://www.eclipse.org/downloads/download.php?file=/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz"
-  local checksum_url = "https://download.eclipse.org/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz.sha256"
+  local download_url =
+  "https://www.eclipse.org/downloads/download.php?file=/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz"
+  local checksum_url =
+  "https://download.eclipse.org/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz.sha256"
 
   -- Check if JDTLS is already extracted and installed
   local jdtls_plugins = jdtls_dir .. "/plugins"
@@ -903,22 +906,22 @@ local function setup_jdtls()
     -- JDTLS is already installed, just configure it
     configure_jdtls(jdtls_dir)
   else
-    require('fidget').notify("Installing JDTLS...", nil, {group = "JDTLS Setup"})
+    require('fidget').notify("Installing JDTLS...", nil, { group = "JDTLS Setup" })
 
     -- Callback function to handle the result of download_and_verify
     local function on_verify_complete(success, tar_path)
       if success then
-        require('fidget').notify("Extracting JDTLS...", nil, {group = "JDTLS Setup"})
+        require('fidget').notify("Extracting JDTLS...", nil, { group = "JDTLS Setup" })
 
-        vim.fn.system({"tar", "-xzf", tar_path, "-C", jdtls_dir})
+        vim.fn.system({ "tar", "-xzf", tar_path, "-C", jdtls_dir })
 
         -- Cleanup downloaded tar.gz after extraction
         vim.loop.fs_unlink(tar_path)
 
-        require('fidget').notify("JDTLS installed successfully", nil, {group = "JDTLS Setup"})
+        require('fidget').notify("JDTLS installed successfully", nil, { group = "JDTLS Setup" })
         configure_jdtls(jdtls_dir)
       else
-        require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, {group = "JDTLS Setup"})
+        require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, { group = "JDTLS Setup" })
       end
     end
 
@@ -929,14 +932,13 @@ end
 
 
 vim.api.nvim_create_autocmd("FileType", {
-    pattern = "java",
-    callback = function()
-        vim.defer_fn(function()
-            setup_jdtls()
-        end, 0)
-    end,
+  pattern = "java",
+  callback = function()
+    vim.defer_fn(function()
+      setup_jdtls()
+    end, 0)
+  end,
 })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
-
