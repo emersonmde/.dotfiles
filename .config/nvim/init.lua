@@ -771,47 +771,57 @@ local function file_exists_with_pattern(path)
     return result ~= ""
 end
 
+local function download_and_verify_in_background(download_url, checksum_url, target_dir, target_file, callback)
+    local target_path = target_dir .. "/" .. target_file
+    local checksum_path = target_path .. ".sha256"
+    vim.fn.mkdir(target_dir, "p")
 
-local function download_and_verify(download_url, checksum_url, target_dir, target_file, callback)
-  local target_path = target_dir .. "/" .. target_file
-  local checksum_path = target_path .. ".sha256"
+    -- Download both the file and checksum, then verify the checksum
+    local command = string.format(
+        [[
+        { 
+          curl -L -o '%s' '%s' &&
+          curl -L -o '%s' '%s' &&
+          CHECKSUM=$(shasum -a 256 '%s' | awk '{print $1}') &&
+          EXPECTED_CHECKSUM=$(cat '%s') &&
+          if [ "$CHECKSUM" = "$EXPECTED_CHECKSUM" ]; then
+            tar -xzf '%s' -C '%s' &&
+            echo "success"
+          else
+            echo "fail"
+          fi
+        } &> /tmp/jdtls_setup.log
+        ]],
+        target_path, download_url,
+        checksum_path, checksum_url,
+        target_path, checksum_path,
+        target_path, target_dir
+    )
 
+    local function on_exit(code, _)
+        vim.schedule(function()
+            local log = vim.fn.readfile("/tmp/jdtls_setup.log")
+            local success = vim.tbl_contains(log, "success")
+            vim.loop.fs_unlink("/tmp/jdtls_setup.log")
 
-  vim.fn.mkdir(target_dir, "p")
+            if code == 0 and success then
+                require('fidget').notify("JDTLS downloaded", nil, {group = "JDTLS Setup"})
+                callback(true, target_path)
+            else
+                require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, {group = "JDTLS Setup"})
+                callback(false, target_path)
+                vim.loop.fs_unlink(target_path)
+            end
+        end)
+    end
 
-  require('fidget').notify(string.format("Downloading %s...", target_file), nil, {group = "JDTLS Setup"})
-  vim.fn.system(string.format("curl -L -o '%s' '%s'", target_path, download_url))
-  vim.fn.system(string.format("curl -L -o '%s' '%s'", checksum_path, checksum_url))
-  require('fidget').notify(string.format("Downloaded %s", target_file), nil, {group = "JDTLS Setup"})
-
-  -- Read the expected checksum
-  local expected_checksum = vim.fn.readfile(checksum_path)[1]
-  if not expected_checksum then
-    require('fidget').notify("Failed to read checksum file.", vim.log.levels.ERROR, {group = "JDTLS Setup"})
-    print("Error installing JDTLS: Failed to read checksum file.")
-    callback(false, target_path)
-    return
-  end
-
-  -- Compute checksum and notify user
-  local computed_checksum = vim.fn.system(string.format("shasum -a 256 '%s' | awk '{print $1}'", target_path))
-  expected_checksum = expected_checksum:match("%s*(.-)%s*$")
-  computed_checksum = computed_checksum:match("%s*(.-)%s*$")
-
-  -- Cleanup checksum file
-  vim.loop.fs_unlink(checksum_path)
-
-  -- Compare checksums and notify
-  if expected_checksum == computed_checksum then
-    require('fidget').notify(string.format("Checksum verified: %s", target_file), nil, {group = "JDTLS Setup"})
-    callback(true, target_path)
-  else
-    require('fidget').notify("Checksum verification failed. Installation aborted.", vim.log.levels.ERROR, {group = "JDTLS Setup"})
-    print("Error installing JDTLS: Checksum verification failed.")
-    vim.loop.fs_unlink(target_path)
-    callback(false, target_path)
-  end
+    vim.loop.spawn("bash", {
+        args = {"-c", command},
+        stdio = {nil, nil, nil}
+    }, on_exit)
 end
+
+
 
 
 local function configure_jdtls(jdtls_dir)
@@ -845,7 +855,7 @@ local function configure_jdtls(jdtls_dir)
       "-configuration", config_dir,
       "-data", workspace_folder
     },
-    on_attach = on_attach, -- Make sure this is defined or imported correctly
+    on_attach = on_attach,
     capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities()),
     root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'}),
 
@@ -891,15 +901,13 @@ local function setup_jdtls()
 
   if exists then
     -- JDTLS is already installed, just configure it
-    require('fidget').notify("JDTLS is already installed. Configuring...", nil, {group = "JDTLS Setup"})
     configure_jdtls(jdtls_dir)
   else
-    require('fidget').notify("Setting up JDTLS...", nil, {group = "JDTLS Setup"})
+    require('fidget').notify("Installing JDTLS...", nil, {group = "JDTLS Setup"})
 
     -- Callback function to handle the result of download_and_verify
     local function on_verify_complete(success, tar_path)
       if success then
-        -- Notify extraction start
         require('fidget').notify("Extracting JDTLS...", nil, {group = "JDTLS Setup"})
 
         vim.fn.system({"tar", "-xzf", tar_path, "-C", jdtls_dir})
@@ -907,14 +915,14 @@ local function setup_jdtls()
         -- Cleanup downloaded tar.gz after extraction
         vim.loop.fs_unlink(tar_path)
 
-        require('fidget').notify("JDTLS installed successfully.", nil, {group = "JDTLS Setup"})
-        configure_jdtls(jdtls_dir) -- Proceed with configuration
+        require('fidget').notify("JDTLS installed successfully", nil, {group = "JDTLS Setup"})
+        configure_jdtls(jdtls_dir)
       else
-        require('fidget').notify("Failed to download or verify JDTLS.", vim.log.levels.ERROR, {group = "JDTLS Setup"})
+        require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, {group = "JDTLS Setup"})
       end
     end
 
-    download_and_verify(download_url, checksum_url, jdtls_dir, jdtls_tar, on_verify_complete)
+    download_and_verify_in_background(download_url, checksum_url, jdtls_dir, jdtls_tar, on_verify_complete)
   end
 end
 
@@ -923,20 +931,11 @@ end
 vim.api.nvim_create_autocmd("FileType", {
     pattern = "java",
     callback = function()
-        -- Defer the setup_jdtls call, delay is in milliseconds
         vim.defer_fn(function()
             setup_jdtls()
-        end, 1000) -- Adjust the delay as needed
+        end, 0)
     end,
 })
-
--- vim.api.nvim_create_autocmd("FileType", {
---     pattern = "java",
---     callback = function()
---         setup_jdtls()
---     end,
--- })
-
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
