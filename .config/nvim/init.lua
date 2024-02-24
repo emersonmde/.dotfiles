@@ -1,6 +1,7 @@
 -- Fix lua errors
 ---@diagnostic disable-next-line: undefined-global
 local vim = vim
+local home = os.getenv('HOME')
 
 -- Set <space> as the leader key
 -- See `:help mapleader`
@@ -344,7 +345,7 @@ vim.opt.expandtab = true
 -- Save undo history
 vim.opt.swapfile = false
 vim.opt.backup = false
-vim.opt.undodir = os.getenv("HOME") .. "/.vim/undodir"
+vim.opt.undodir = home .. "/.vim/undodir"
 vim.opt.undofile = true
 
 -- Case-insensitive searching UNLESS \C or capital in search
@@ -635,6 +636,152 @@ require('which-key').register({
   ['<leader>h'] = { 'Git [H]unk' },
 }, { mode = 'v' })
 
+local function jdtlsConfig()
+  local os_name = vim.loop.os_uname().sysname
+  local arch = vim.loop.os_uname().machine
+  local config_dir_name = 'config_linux'
+  if os_name == 'Darwin' then
+    config_dir_name = arch == 'x86_64' and 'config_mac' or 'config_mac_arm'
+  elseif os_name == 'Linux' then
+    config_dir_name = arch == 'x86_64' and 'config_linux' or 'config_linux_arm'
+  end
+  local jdtls_dir = home .. '/.local/share/nvim/mason/packages/jdtls/'
+  local config_path = jdtls_dir .. "/" .. config_dir_name
+
+  local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
+  local workspace_dir = home .. '/workspace/' .. project_name
+
+  local function on_init(client)
+    if client.config.settings then
+      client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+    end
+  end
+
+  local bundles = {}
+  -- TODO: Setup Java debugging, need to add mason plugin
+  -- local mason_path = vim.fn.glob(vim.fn.stdpath("data") .. "/mason/")
+  -- vim.list_extend(bundles, vim.split(vim.fn.glob(mason_path .. "packages/java-test/extension/server/*.jar"), "\n"))
+  -- vim.list_extend(
+  --   bundles,
+  --   vim.split(vim.fn.glob(mason_path ..
+  --     "packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar"), "\n")
+  -- )
+
+  local extendedClientCapabilities = require("jdtls").extendedClientCapabilities
+  extendedClientCapabilities.resolveAdditionalTextEditsSupport = true
+
+  return {
+    cmd = {
+      'java', -- or '/path/to/java11_or_newer/bin/java'
+      '-Declipse.application=org.eclipse.jdt.ls.core.id1',
+      '-Dosgi.bundles.defaultStartLevel=4',
+      '-Declipse.product=org.eclipse.jdt.ls.core.product',
+      '-Dlog.protocol=true',
+      '-Dlog.level=ALL',
+      '-javaagent:' .. jdtls_dir .. '/lombok.jar',
+      '-Xms1g',
+      '--add-modules=ALL-SYSTEM',
+      '--add-opens',
+      'java.base/java.util=ALL-UNNAMED',
+      '--add-opens',
+      'java.base/java.lang=ALL-UNNAMED',
+
+      '-jar',
+      vim.fn.glob(jdtls_dir .. '/plugins/org.eclipse.equinox.launcher_*.jar'),
+
+      '-configuration',
+      config_path,
+      '-data',
+      workspace_dir,
+    },
+    flags = {
+      debounce_text_changes = 150,
+      allow_incremental_sync = true,
+    },
+    handlers = {},
+    root_dir = require('jdtls.setup').find_root({ 'build.gradle', 'pom.xml', '.git' }),
+    capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities()),
+    -- contentProvider = { preferred = 'fernflower' },
+    on_init = on_init,
+    on_attach = on_attach,
+    init_options = {
+      bundles = bundles,
+      extendedClientCapabilities = extendedClientCapabilities,
+    },
+    settings = {
+      java = {
+        signatureHelp = { enabled = true },
+        configuration = {
+          updateBuildConfiguration = 'interactive',
+          -- runtimes = {
+          --   {
+          --     name = 'JavaSE-11',
+          --     path = '/usr/lib/jvm/java-11-openjdk/',
+          --     default = true
+          --   },
+          --   {
+          --     name = 'JavaSE-17',
+          --     path = '/usr/lib/jvm/java-17-openjdk/',
+          --   },
+          -- },
+        },
+
+        eclipse = {
+          downloadSources = true,
+        },
+        maven = {
+          downloadSources = true,
+        },
+        implementationsCodeLens = {
+          enabled = true,
+        },
+        referencesCodeLens = {
+          enabled = true,
+        },
+        references = {
+          includeDecompiledSources = true,
+        },
+        inlayHints = {
+          parameterNames = {
+            enabled = 'all', -- literals, all, none
+          },
+        },
+        completion = {
+          favoriteStaticMembers = {
+            'org.hamcrest.MatcherAssert.assertThat',
+            'org.hamcrest.Matchers.*',
+            'org.hamcrest.CoreMatchers.*',
+            'org.junit.jupiter.api.Assertions.*',
+            'java.util.Objects.requireNonNull',
+            'java.util.Objects.requireNonNullElse',
+            'org.mockito.Mockito.*',
+          },
+        },
+        sources = {
+          organizeImports = {
+            starThreshold = 9999,
+            staticStarThreshold = 9999,
+          },
+        },
+        codeGeneration = {
+          toString = {
+            template = '${object.className}{${member.name()}=${member.value}, ${otherMembers}}',
+          },
+          useBlocks = true,
+        },
+      },
+    },
+  }
+end
+
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "java",
+  callback = function()
+    require("jdtls.setup").add_commands()
+    require("jdtls").start_or_attach(jdtlsConfig())
+  end,
+})
+
 -- mason-lspconfig requires that these setup functions are called in this order
 -- before setting up the servers.
 require('mason').setup()
@@ -654,7 +801,7 @@ local servers = {
   rust_analyzer = {},
   tsserver = {},
   html = { filetypes = { 'html', 'twig', 'hbs' } },
-  htmx = {},
+  jdtls = { skip_setup = true },
 
   lua_ls = {
     Lua = {
@@ -665,6 +812,7 @@ local servers = {
     },
   },
 }
+
 
 -- Setup neovim lua configuration
 require('neodev').setup()
@@ -682,6 +830,9 @@ mason_lspconfig.setup {
 
 mason_lspconfig.setup_handlers {
   function(server_name)
+    if servers[server_name] ~= nil and servers[server_name].skip_setup then
+      return
+    end
     require('lspconfig')[server_name].setup {
       capabilities = capabilities,
       on_attach = on_attach,
@@ -759,186 +910,6 @@ require("copilot").setup {
   },
 }
 
-require('fidget').setup({})
-
--- [[ Configure LSP for Java ]]
-local function file_exists_with_pattern(path)
-  local command = "ls " .. path .. " 2>/dev/null"
-  local handle = io.popen(command)
-  local result = handle:read("*a")
-  handle:close()
-  return result ~= ""
-end
-
-local function download_and_verify_in_background(download_url, checksum_url, target_dir, target_file, callback)
-  local target_path = target_dir .. "/" .. target_file
-  local checksum_path = target_path .. ".sha256"
-  vim.fn.mkdir(target_dir, "p")
-
-  -- Download both the file and checksum, then verify the checksum
-  local command = string.format(
-    [[
-        {
-          curl -L -o '%s' '%s' &&
-          curl -L -o '%s' '%s' &&
-          CHECKSUM=$(shasum -a 256 '%s' | awk '{print $1}') &&
-          EXPECTED_CHECKSUM=$(cat '%s') &&
-          if [ "$CHECKSUM" = "$EXPECTED_CHECKSUM" ]; then
-            tar -xzf '%s' -C '%s' &&
-            echo "success"
-          else
-            echo "fail"
-          fi
-        } &> /tmp/jdtls_setup.log
-        ]],
-    target_path, download_url,
-    checksum_path, checksum_url,
-    target_path, checksum_path,
-    target_path, target_dir
-  )
-
-  local function on_exit(code, _)
-    vim.schedule(function()
-      local log = vim.fn.readfile("/tmp/jdtls_setup.log")
-      local success = vim.tbl_contains(log, "success")
-      vim.loop.fs_unlink("/tmp/jdtls_setup.log")
-      vim.loop.fs_unlink(checksum_path)
-
-      if code == 0 and success then
-        require('fidget').notify("JDTLS downloaded", nil, { group = "JDTLS Setup" })
-        callback(true, target_path)
-      else
-        require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, { group = "JDTLS Setup" })
-        callback(false, target_path)
-        vim.loop.fs_unlink(target_path)
-      end
-    end)
-  end
-
-  vim.loop.spawn("bash", {
-    args = { "-c", command },
-    stdio = { nil, nil, nil }
-  }, on_exit)
-end
-
-
-
-
-local function configure_jdtls(jdtls_dir)
-  -- Determine the correct config directory based on OS and architecture
-  local os_name = vim.loop.os_uname().sysname
-  local arch = vim.loop.os_uname().machine
-  local config_dir_name = "config_linux"
-  if os_name == "Darwin" then
-    config_dir_name = arch == "x86_64" and "config_mac" or "config_mac_arm"
-  elseif os_name == "Linux" then
-    config_dir_name = arch == "x86_64" and "config_linux" or "config_linux_arm"
-  elseif os_name == "Windows_NT" then
-    config_dir_name = "config_win"
-  end
-  local config_dir = jdtls_dir .. "/" .. config_dir_name
-
-  -- Find the launcher jar in the plugins directory
-  local launcher_jar_path = vim.fn.glob(jdtls_dir .. "/plugins/org.eclipse.equinox.launcher_*.jar")
-
-  local workspace_folder = vim.fn.expand("~/.local/share/nvim/workspace") ..
-  vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
-  local config = {
-    cmd = {
-      "java",
-      "-Declipse.application=org.eclipse.jdt.ls.core.id1",
-      "-Dosgi.bundles.defaultStartLevel=4",
-      "-Declipse.product=org.eclipse.jdt.ls.core.product",
-      "-Dlog.protocol=true",
-      "-Dlog.level=ALL",
-      "-Xms1g",
-      "-jar", launcher_jar_path,
-      "-configuration", config_dir,
-      "-data", workspace_folder
-    },
-    on_attach = on_attach,
-    capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities()),
-    root_dir = require('jdtls.setup').find_root({ '.git', 'mvnw', 'gradlew' }),
-
-    -- Here you can configure eclipse.jdt.ls specific settings
-    -- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
-    -- for a list of options
-    settings = {
-      java = {
-        jdt = {
-          ls = {
-            lombokSupport = true,
-            protofBufSupport = true,
-          },
-        }
-      }
-    },
-
-    -- Language server `initializationOptions`
-    -- You need to extend the `bundles` with paths to jar files
-    -- if you want to use additional eclipse.jdt.ls plugins.
-    --
-    -- See https://github.com/mfussenegger/nvim-jdtls#java-debug-installation
-    --
-    -- If you don't plan on using the debugger or other eclipse.jdt.ls plugins you can remove this
-    init_options = {
-      bundles = {}
-    },
-  }
-  require('jdtls').start_or_attach(config)
-end
-
-
-local function setup_jdtls()
-  local jdtls_dir = vim.fn.expand("~/.local/share/nvim/jdtls")
-  local jdtls_tar = "jdtls.tar.gz"
-  local download_url =
-  "https://www.eclipse.org/downloads/download.php?file=/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz"
-  local checksum_url =
-  "https://download.eclipse.org/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz.sha256"
-
-  -- Check if JDTLS is already extracted and installed
-  local jdtls_plugins = jdtls_dir .. "/plugins"
-  local launcher_jar_pattern = "org.eclipse.equinox.launcher_*.jar"
-  local exists = file_exists_with_pattern(jdtls_plugins .. "/" .. launcher_jar_pattern)
-
-  if exists then
-    -- JDTLS is already installed, just configure it
-    configure_jdtls(jdtls_dir)
-  else
-    require('fidget').notify("Installing JDTLS...", nil, { group = "JDTLS Setup" })
-
-    -- Callback function to handle the result of download_and_verify
-    local function on_verify_complete(success, tar_path)
-      if success then
-        require('fidget').notify("Extracting JDTLS...", nil, { group = "JDTLS Setup" })
-
-        vim.fn.system({ "tar", "-xzf", tar_path, "-C", jdtls_dir })
-
-        -- Cleanup downloaded tar.gz after extraction
-        vim.loop.fs_unlink(tar_path)
-
-        require('fidget').notify("JDTLS installed successfully", nil, { group = "JDTLS Setup" })
-        configure_jdtls(jdtls_dir)
-      else
-        require('fidget').notify("Failed to download or verify JDTLS", vim.log.levels.ERROR, { group = "JDTLS Setup" })
-      end
-    end
-
-    download_and_verify_in_background(download_url, checksum_url, jdtls_dir, jdtls_tar, on_verify_complete)
-  end
-end
-
-
-
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "java",
-  callback = function()
-    vim.defer_fn(function()
-      setup_jdtls()
-    end, 0)
-  end,
-})
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
