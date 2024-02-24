@@ -1,3 +1,7 @@
+-- Fix lua errors
+---@diagnostic disable-next-line: undefined-global
+local vim = vim
+
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are required (otherwise wrong leader will be used)
@@ -292,6 +296,9 @@ require('lazy').setup({
     build = ':TSUpdate',
   },
 
+	-- JDT LS for Java
+	"mfussenegger/nvim-jdtls",
+
   -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
   --       These are some example plugins that I've included in the kickstart repository.
   --       Uncomment any of the lines below to enable them.
@@ -541,11 +548,7 @@ end, 0)
 
 
 -- Ads multiple workspace folders configured by Bemol
-function bemol()
-  if os.getenv('WORK_CONFIG') ~= 'true' then
-    return
-  end
-
+local function bemol()
   local bemol_dir = vim.fs.find({ '.bemol' }, { upward = true, type = 'directory'})[1]
   local ws_folders_lsp = {}
   if bemol_dir then
@@ -609,7 +612,10 @@ local on_attach = function(_, bufnr)
     vim.lsp.buf.format()
   end, { desc = 'Format current buffer with LSP' })
 
-  bemol()
+  if os.getenv('WORK_CONFIG') == 'true' then
+		bemol()
+  end
+
 end
 
 -- document existing key chains
@@ -650,22 +656,6 @@ local servers = {
   tsserver = {},
   html = { filetypes = { 'html', 'twig', 'hbs'} },
   htmx = {},
-  jdtls = {
-    java = {
-      jdt = {
-        ls = {
-          lombokSupport = {
-            enabled = true,
-          },
-          -- TODO: check lombok.jar exists before passing it to vmargs
-          vmargs = '-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1G -Xms100m -Xlog:disable -javaagent:~/.local/share/jdtls/lombok.jar'
-        },
-      },
-      eclipse = {
-        downloadSources = true,
-      },
-    },
-  },
 
   lua_ls = {
     Lua = {
@@ -769,6 +759,175 @@ require("copilot").setup {
     end,
   },
 }
+
+
+-- [[ Configure LSP for Java ]]
+local function file_exists_with_pattern(path)
+    local command = "ls " .. path .. " 2>/dev/null"
+    local handle = io.popen(command)
+    local result = handle:read("*a")
+    handle:close()
+    return result ~= ""
+end
+
+local function download_and_verify(download_url, checksum_url, target_dir, target_file, callback)
+  local target_path = target_dir .. "/" .. target_file
+  local checksum_path = target_path .. ".sha256"
+
+  -- Ensure target directory exists
+  vim.fn.mkdir(target_dir, "p")
+
+  -- Download file
+  vim.fn.system(string.format("curl -L -o '%s' '%s'", target_path, download_url))
+
+  -- Download checksum
+  vim.fn.system(string.format("curl -L -o '%s' '%s'", checksum_path, checksum_url))
+
+  -- Read the expected checksum from the downloaded .sha256 file
+  local expected_checksum = vim.fn.readfile(checksum_path)[1]
+  if not expected_checksum then
+    print("Failed to read checksum file.")
+    callback(false)
+    return
+  end
+  print(string.format("Expected checksum: '%s'", expected_checksum))
+
+  -- Compute the checksum of the downloaded file
+  local computed_checksum = vim.fn.system(string.format("shasum -a 256 '%s' | awk '{print $1}'", target_path))
+  print(string.format("Computed checksum: '%s'", computed_checksum))
+
+  -- Strip leading and trailing whitespace (including newlines) from both strings
+  expected_checksum = expected_checksum:match("%s*(.-)%s*$")
+  computed_checksum = computed_checksum:match("%s*(.-)%s*$")
+
+  -- Cleanup the checksum file after reading
+  vim.loop.fs_unlink(checksum_path)
+
+  -- Compare the expected and computed checksums
+  if expected_checksum == computed_checksum then
+    print(string.format("Checksum verified: %s", target_file))
+    callback(true)
+  else
+    print("Checksum verification failed. Installation aborted.")
+    -- Optionally remove the unverified file
+    vim.loop.fs_unlink(target_path)
+    callback(false)
+  end
+end
+
+local function configure_jdtls(jdtls_dir)
+  -- Determine the correct config directory based on OS and architecture
+  local os_name = vim.loop.os_uname().sysname
+  local arch = vim.loop.os_uname().machine
+  local config_dir_name = "config_linux"
+  if os_name == "Darwin" then
+    config_dir_name = arch == "x86_64" and "config_mac" or "config_mac_arm"
+  elseif os_name == "Linux" then
+    config_dir_name = arch == "x86_64" and "config_linux" or "config_linux_arm"
+  elseif os_name == "Windows_NT" then
+    config_dir_name = "config_win"
+  end
+  local config_dir = jdtls_dir .. "/" .. config_dir_name
+
+  -- Find the launcher jar in the plugins directory
+  local launcher_jar_path = vim.fn.glob(jdtls_dir .. "/plugins/org.eclipse.equinox.launcher_*.jar")
+
+  local workspace_folder = vim.fn.expand("~/.local/share/nvim/workspace") .. vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
+  local config = {
+    cmd = {
+      "java",
+      "-Declipse.application=org.eclipse.jdt.ls.core.id1",
+      "-Dosgi.bundles.defaultStartLevel=4",
+      "-Declipse.product=org.eclipse.jdt.ls.core.product",
+      "-Dlog.protocol=true",
+      "-Dlog.level=ALL",
+      "-Xms1g",
+      -- "--add-modules=ALL-SYSTEM",
+      -- "--add-opens', 'java.base/java.util=ALL-UNNAMED",
+      -- "--add-opens', 'java.base/java.lang=ALL-UNNAMED",
+      "-jar", launcher_jar_path,
+      "-configuration", config_dir,
+      "-data", workspace_folder
+    },
+    on_attach = on_attach, -- Make sure this is defined or imported correctly
+    capabilities = require('cmp_nvim_lsp').default_capabilities(vim.lsp.protocol.make_client_capabilities()),
+    root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'}),
+
+		-- Here you can configure eclipse.jdt.ls specific settings
+		-- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
+		-- for a list of options
+    settings = {
+      java = {
+        jdt = {
+          ls = {
+            lombokSupport = true,
+            protofBufSupport = true,
+          },
+        }
+      }
+    },
+
+    -- Language server `initializationOptions`
+    -- You need to extend the `bundles` with paths to jar files
+    -- if you want to use additional eclipse.jdt.ls plugins.
+    --
+    -- See https://github.com/mfussenegger/nvim-jdtls#java-debug-installation
+    --
+    -- If you don't plan on using the debugger or other eclipse.jdt.ls plugins you can remove this
+    init_options = {
+      bundles = {}
+    },
+  }
+  require('jdtls').start_or_attach(config)
+end
+
+local function setup_jdtls()
+  local jdtls_dir = vim.fn.expand("~/.local/share/nvim/jdtls")
+  local jdtls_tar = "jdtls.tar.gz"
+  local download_url = "https://www.eclipse.org/downloads/download.php?file=/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz"
+  local checksum_url = "https://download.eclipse.org/jdtls/milestones/1.33.0/jdt-language-server-1.33.0-202402151717.tar.gz.sha256"
+
+  -- Path to the downloaded tar.gz file
+  local tar_path = jdtls_dir .. "/" .. jdtls_tar
+
+  -- Check if JDTLS is already extracted and installed
+	-- Print vim.loop.fs_stat...
+	local jdtls_plugins = jdtls_dir .. "/plugins"
+  local launcher_jar_pattern = "org.eclipse.equinox.launcher_*.jar"
+  local exists = file_exists_with_pattern(jdtls_plugins .. "/" .. launcher_jar_pattern)
+	if exists then
+    -- JDTLS is already installed, just configure it
+    print("JDTLS is already installed. Configuring...")
+    configure_jdtls(jdtls_dir)
+	else
+    print("Setting up JDTLS...")
+
+    -- Callback function to handle the result of download_and_verify
+    local function on_verify_complete(success)
+      if success then
+        -- Extraction logic here
+        print("Extracting JDTLS...")
+        vim.fn.system({"tar", "-xzf", tar_path, "-C", jdtls_dir})
+        vim.loop.fs_unlink(tar_path) -- Cleanup downloaded tar.gz after extraction
+        print("JDTLS installed successfully.")
+        configure_jdtls(jdtls_dir) -- Proceed with configuration
+      else
+        print("Failed to download or verify JDTLS.")
+      end
+    end
+
+    -- Start the download and verification process
+    download_and_verify(download_url, checksum_url, jdtls_dir, jdtls_tar, on_verify_complete)
+	end
+end
+
+
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "java",
+    callback = function()
+        setup_jdtls()
+    end,
+})
 
 
 -- The line beneath this is called `modeline`. See `:help modeline`
