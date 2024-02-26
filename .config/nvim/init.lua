@@ -382,6 +382,9 @@ vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = 'Go to next diagnos
 vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Open floating diagnostic message' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostics list' })
 
+-- Terminal mode
+vim.keymap.set('t', '<esc>', [[<C-\><C-n>]], { buffer = 0 })
+
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
 local highlight_group = vim.api.nvim_create_augroup('YankHighlight', { clear = true })
@@ -479,7 +482,22 @@ vim.keymap.set('n', '<leader>sr', require('telescope.builtin').resume, { desc = 
 vim.defer_fn(function()
   require('nvim-treesitter.configs').setup {
     -- Add languages to be installed here that you want installed for treesitter
-    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'javascript', 'typescript', 'vimdoc', 'vim', 'bash', 'java' },
+    ensure_installed = {
+      'c',
+      'cpp',
+      'go',
+      'lua',
+      'python',
+      'rust',
+      'tsx',
+      'javascript',
+      'typescript',
+      'vimdoc',
+      'vim',
+      'bash',
+      'java',
+      'zig'
+    },
 
     -- Autoinstail languages that are not installed. Defaults to false (but you can change for yourself!)
     auto_install = false,
@@ -645,11 +663,11 @@ local function jdtlsConfig()
   elseif os_name == 'Linux' then
     config_dir_name = arch == 'x86_64' and 'config_linux' or 'config_linux_arm'
   end
-  local jdtls_dir = home .. '/.local/share/nvim/mason/packages/jdtls/'
+  local jdtls_dir = home .. '/.local/share/nvim/mason/packages/jdtls'
   local config_path = jdtls_dir .. "/" .. config_dir_name
 
   local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ":p:h:t")
-  local workspace_dir = home .. '/workspace/' .. project_name
+  local workspace_dir = jdtls_dir .. '/workspace/' .. project_name
 
   local function on_init(client)
     if client.config.settings then
@@ -802,6 +820,7 @@ local servers = {
   tsserver = {},
   html = { filetypes = { 'html', 'twig', 'hbs' } },
   jdtls = { skip_setup = true },
+  zls = {},
 
   lua_ls = {
     Lua = {
