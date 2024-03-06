@@ -12,6 +12,7 @@
       - stow
       - tree
       - ripgrep
+      - tmux
 
   tasks:
   - name: Display ansible_os_family
@@ -118,3 +119,17 @@
       - rust-src
       - rustfmt
     when: item not in installed_components.stdout
+
+  - name: Check if TPM is installed
+    stat:
+      path: "{{ ansible_env.HOME }}/.tmux/plugins/tpm"
+    register: tpm_dir
+    changed_when: false
+
+  - name: Install TPM
+    git:
+      repo: 'https://github.com/tmux-plugins/tpm.git'
+      dest: "{{ ansible_env.HOME }}/.tmux/plugins/tpm"
+    become: no
+    when: not tpm_dir.stat.exists
+
