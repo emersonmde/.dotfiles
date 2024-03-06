@@ -229,29 +229,15 @@ require('lazy').setup({
 
   -- Color scheme
   {
-    "sainnhe/everforest",
-    config = function()
+    "sainnhe/sonokai",
+    config = function ()
+      vim.g.sonokai_style = "default"
+      vim.g.sonokai_disable_italic_comment = true
+      vim.g.sonokai_menu_selection_background = "green"
       vim.opt.termguicolors = true
-      vim.g.everforest_background = "hard"
-      vim.g.everforest_ui_contrast = "high"
-      vim.g.everforest_disable_italic_comment = true
-      vim.g.everforest_colors_override = { bg0 = {'#191e21', '233'} }
-      vim.cmd.colorscheme("everforest")
+      vim.cmd.colorscheme("sonokai")
     end
   },
-  -- {
-  --   -- Theme inspired by Atom
-  --   'navarasu/onedark.nvim',
-  --   priority = 1000,
-  --   lazy = false,
-  --   config = function()
-  --     require('onedark').setup {
-  --       -- Set a style preset. 'dark' is default.
-  --       style = 'darker', -- dark, darker, cool, deep, warm, warmer, light
-  --     }
-  --     require('onedark').load()
-  --   end,
-  -- },
 
   {
     -- Set lualine as statusline
