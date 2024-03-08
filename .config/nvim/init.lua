@@ -230,7 +230,7 @@ require('lazy').setup({
   -- Color scheme
   {
     "sainnhe/sonokai",
-    config = function ()
+    config = function()
       vim.g.sonokai_style = "default"
       vim.g.sonokai_disable_italic_comment = true
       vim.g.sonokai_menu_selection_background = "green"
@@ -242,15 +242,6 @@ require('lazy').setup({
   {
     -- Set lualine as statusline
     'nvim-lualine/lualine.nvim',
-    -- See `:help lualine.txt`
-    opts = {
-      options = {
-        icons_enabled = false,
-        theme = 'auto',
-        component_separators = '|',
-        section_separators = '',
-      },
-    },
   },
 
   {
@@ -306,10 +297,10 @@ require('lazy').setup({
       "TmuxNavigatePrevious",
     },
     keys = {
-      { "<c-h>", "<cmd><C-U>TmuxNavigateLeft<cr>" },
-      { "<c-j>", "<cmd><C-U>TmuxNavigateDown<cr>" },
-      { "<c-k>", "<cmd><C-U>TmuxNavigateUp<cr>" },
-      { "<c-l>", "<cmd><C-U>TmuxNavigateRight<cr>" },
+      { "<c-h>",  "<cmd><C-U>TmuxNavigateLeft<cr>" },
+      { "<c-j>",  "<cmd><C-U>TmuxNavigateDown<cr>" },
+      { "<c-k>",  "<cmd><C-U>TmuxNavigateUp<cr>" },
+      { "<c-l>",  "<cmd><C-U>TmuxNavigateRight<cr>" },
       { "<c-\\>", "<cmd><C-U>TmuxNavigatePrevious<cr>" },
     },
   },
@@ -944,6 +935,16 @@ require("copilot").setup {
       return true
     end,
   },
+}
+
+
+local custom_auto = require('lualine.themes.auto')
+
+custom_auto.normal.a.bg = '#a7df78'
+custom_auto.insert.a.bg = '#85d3f2'
+
+require('lualine').setup {
+  options = { theme = custom_auto },
 }
 
 

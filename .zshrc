@@ -100,3 +100,12 @@ fi
 
 # Fix history search in tmux
 bindkey '^R' history-incremental-search-backward
+
+# Fix ls colors
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS
+  export LSCOLORS=gxfxcxdxbxegedabagacad
+else
+  # Linux
+  export LS_COLORS='di=32:'
+fi
