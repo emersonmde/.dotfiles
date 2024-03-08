@@ -98,3 +98,5 @@ if [ -f ~/.zshrc-work ]; then
   source ~/.zshrc-work
 fi
 
+# Fix history search in tmux
+bindkey '^R' history-incremental-search-backward
