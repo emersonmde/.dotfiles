@@ -4,15 +4,18 @@
   vars:
     common_packages:
       - awscli
+      - cmake
+      - curl
+      - grep
       - htop
       - hyperfine
       - jq
       - neovim
       - nmap
-      - stow
-      - tree
       - ripgrep
+      - stow
       - tmux
+      - tree
 
   tasks:
   - name: Display ansible_os_family
@@ -205,4 +208,4 @@
     homebrew:
       name: spectacle
       state: present
-    when: not spectacle_installed.stat.exists
+    when: ansible_os_family == 'Darwin' and not spectacle_installed.stat.exists
