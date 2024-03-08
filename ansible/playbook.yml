@@ -175,3 +175,26 @@
     become: no
     when: not tpm_dir.stat.exists
 
+  # Install iterm2
+  - name: Check if iTerm2 is installed
+    stat:
+      path: /Applications/iTerm.app
+    when: ansible_os_family == 'Darwin'
+    register: iterm2_installed
+
+  - name: Install iTerm2
+    homebrew:
+      name: iterm2
+      state: present
+    when: ansible_os_family == 'Darwin' and not iterm2_installed.stat.exists
+
+  - name: Check if Spectacle is installed
+    stat:
+      path: /Applications/Spectacle.app
+    register: spectacle_installed
+
+  - name: Install Spectacle
+    homebrew:
+      name: spectacle
+      state: present
+    when: not spectacle_installed.stat.exists
