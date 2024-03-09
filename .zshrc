@@ -104,7 +104,7 @@ bindkey '^R' history-incremental-search-backward
 # Fix ls colors
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS
-  export LSCOLORS=gxfxcxdxbxegedabagacad
+  export LSCOLORS=cxfxcxdxbxegedabagacad
 else
   # Linux
   export LS_COLORS='di=32:'

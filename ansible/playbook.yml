@@ -103,6 +103,33 @@
       chdir: ~/.dotfiles
     when: '"changes_required" in stow_check.stdout'
 
+  - name: Check if .dotfiles-work directory exists
+    stat:
+      path: ~/.dotfiles-work
+    register: dotfiles_work_dir
+
+  - name: Check if work dotfiles are stowed correctly
+    shell: |
+      STOWED_FILES=$(stow --simulate --verbose . 2>&1)
+      if echo "$STOWED_FILES" | grep -q 'LINK:'; then
+        echo "changes_required"
+      else
+        echo "correctly_stowed"
+      fi
+    args:
+      chdir: ~/.dotfiles-work
+      executable: /bin/bash
+    register: work_stow_check
+    changed_when: false
+    ignore_errors: true
+    when: dotfiles_work_dir.stat.exists
+
+  - name: Stow work dotfiles
+    command: stow --no-folding .
+    args:
+      chdir: ~/.dotfiles-work
+    when: 'dotfiles_work_dir.stat.exists and "changes_required" in work_stow_check.stdout'
+
   # Install Node
   - name: Check if NVM is installed
     stat:
@@ -199,6 +226,7 @@
       state: present
     when: ansible_os_family == 'Darwin' and not iterm2_installed.stat.exists
 
+  # Install Spectacle
   - name: Check if Spectacle is installed
     stat:
       path: /Applications/Spectacle.app
