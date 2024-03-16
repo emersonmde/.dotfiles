@@ -393,6 +393,10 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- Terminal mode
 vim.keymap.set('t', '<esc>', [[<C-\><C-n>]], { buffer = 0 })
 
+-- Buffer navigation
+vim.keymap.set('n', '<leader><tab>', ':bnext<cr>', { desc = 'Next buffer' })
+vim.keymap.set('n', '<leader><s-tab>', ':bprevious<cr>', { desc = 'Previous buffer' })
+
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
 local highlight_group = vim.api.nvim_create_augroup('YankHighlight', { clear = true })
@@ -504,7 +508,9 @@ vim.defer_fn(function()
       'vim',
       'bash',
       'java',
-      'zig'
+      'zig',
+      'markdown',
+      'markdown_inline'
     },
 
     -- Autoinstail languages that are not installed. Defaults to false (but you can change for yourself!)
@@ -877,6 +883,12 @@ require('luasnip.loaders.from_vscode').lazy_load()
 luasnip.config.setup {}
 
 cmp.setup {
+  enabled = function()
+    return vim.bo.filetype ~= "markdown"
+  end,
+  performance = {
+    max_view_entries = 25
+  },
   snippet = {
     expand = function(args)
       luasnip.lsp_expand(args.body)
