@@ -47,8 +47,8 @@ os_type="$(uname -s)"
 # Aliases
 alias vi="nvim"
 alias cdws="cd ~/workspace"
-alias ls="ls --color=auto"
-alias lsa="ls -lah"
+alias ls="ls -t --color=auto"
+alias lsa="ls -laht"
 
 # ZSH completion
 fpath=(~/.zsh/completion $fpath)
@@ -91,6 +91,7 @@ SAVEHIST=100000
 setopt SHARE_HISTORY
 
 # Other program defaults
+export EDITOR=nvim
 export SYSTEMD_EDITOR=nvim
 export BROWSER=firefox
 
@@ -109,3 +110,5 @@ else
   # Linux
   export LS_COLORS='di=32:'
 fi
+
+bindkey -v
