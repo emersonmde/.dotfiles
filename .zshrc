@@ -99,9 +99,6 @@ if [ -f ~/.zshrc-work ]; then
   source ~/.zshrc-work
 fi
 
-# Fix history search in tmux
-bindkey '^R' history-incremental-search-backward
-
 # Fix ls colors
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS
@@ -112,3 +109,6 @@ else
 fi
 
 bindkey -v
+
+# Fix history search in tmux
+bindkey '^R' history-incremental-search-backward

@@ -191,6 +191,29 @@
       - rustfmt
     when: item not in installed_components.stdout
 
+  - name: Get list of installed cargo tools
+    command: cargo --list
+    register: cargo_tools_list
+    changed_when: false
+
+  - name: Install cargo-audit if missing
+    shell: cargo install cargo-audit
+    args:
+      executable: /bin/bash
+    become: no
+    environment:
+      PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+    when: "'audit' not in cargo_tools_list.stdout"
+
+  - name: Install cargo-outdated if missing
+    shell: cargo install cargo-outdated
+    args:
+      executable: /bin/bash
+    become: no
+    environment:
+      PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+    when: "'outdated' not in cargo_tools_list.stdout"
+
   # Install Tmux Plugin Manager
   - name: Check if TPM is installed
     stat:
