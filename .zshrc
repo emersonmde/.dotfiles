@@ -6,6 +6,36 @@ if [ $UID -eq 0 ]; then
   NCOLOR="%F{green}"
 fi
 
+export WORKSPACE_DIR="$HOME/workspace"
+update_tmux_window_name() {
+  if [ -n "$TMUX" ] && [ -n "$WORKSPACE_DIR" ]; then
+    local current_dir="$(pwd)"
+    local workspace_dir="$WORKSPACE_DIR"
+
+    if [[ "$current_dir" == "$workspace_dir"/* ]]; then
+      local relative_path="${current_dir#$workspace_dir/}"
+      local workspace_name="${relative_path%%/*}"
+
+      if [ -n "$workspace_name" ]; then
+        tmux rename-window "$workspace_name"
+      fi
+    elif [[ "$current_dir" == "$workspace_dir" ]]; then
+      # Special handling when exactly in the workspace root
+      local short_dir="${current_dir##*/}"  # Extract only the last directory name
+      tmux rename-window "$short_dir"
+    else
+      # Default behavior showing the current directory name
+      local base_name="${current_dir##*/}"
+      tmux rename-window "$base_name"
+    fi
+  fi
+}
+
+# Update tmux window name on cd
+chpwd() {
+  update_tmux_window_name
+}
+
 git_prompt_info() {
   # Check if we're in a Git repo
   if git rev-parse --git-dir > /dev/null 2>&1; then
@@ -47,7 +77,7 @@ os_type="$(uname -s)"
 # Aliases
 alias vi="nvim"
 alias cdws="cd ~/workspace"
-alias ls="ls -t --color=auto"
+alias ls="ls --color=auto"
 alias lsa="ls -laht"
 
 # ZSH completion
