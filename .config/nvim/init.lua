@@ -510,7 +510,9 @@ vim.defer_fn(function()
       'java',
       'zig',
       'markdown',
-      'markdown_inline'
+      'markdown_inline',
+      'kotlin',
+      'smithy'
     },
 
     -- Autoinstail languages that are not installed. Defaults to false (but you can change for yourself!)
@@ -848,6 +850,8 @@ local servers = {
   html = { filetypes = { 'html', 'twig', 'hbs' } },
   jdtls = { skip_setup = true },
   zls = {},
+  kotlin_language_server = {},
+  smithy_ls = {},
 
   lua_ls = {
     Lua = {
